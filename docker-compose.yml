@@ -1,0 +1,129 @@
+version: "3.8"
+
+services:
+  postgres:
+    image: postgres:15
+    container_name: mlflow_postgres
+    environment:
+      POSTGRES_USER: airflow
+      POSTGRES_PASSWORD: airflow
+      POSTGRES_DB: airflow
+      # Optimize PostgreSQL memory settings
+      POSTGRES_INITDB_ARGS: "--data-checksums"
+    ports:
+      - "5432:5432"
+    volumes:
+      - ./postgres_data:/var/lib/postgresql/data
+      - ./init.sql:/docker-entrypoint-initdb.d/init.sql
+    # Add memory limit and resource constraints
+    mem_limit: 512m
+    mem_reservation: 256m
+    cpus: 0.5
+    # Add health check
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U airflow"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+    networks:
+      - backend
+
+  # Optional: MLflow service (comment out if you want to run Airflow only)
+  mlflow:
+    build: .
+    depends_on:
+      postgres:
+        condition: service_healthy
+    ports:
+      - "5000:5000"
+    volumes:
+      - ./artifacts:/mlflow/artifacts
+    command: >
+      mlflow server
+      --gunicorn-opts="--timeout 300 --workers 2 --worker-class sync"
+      --backend-store-uri postgresql://airflow:airflow@postgres:5432/mlflow
+      --default-artifact-root /mlflow/artifacts
+      --host 0.0.0.0
+      --port 5000
+    # Increased memory limit and added resource constraints
+    mem_limit: 2g
+    mem_reservation: 1g
+    cpus: 1.0
+    # Add health check
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:5000/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+    networks:
+      - backend
+    # Add restart policy
+    restart: unless-stopped
+
+  airflow:
+    build:
+      context: .
+      dockerfile: Dockerfile.airflow
+    container_name: airflow
+    depends_on:
+      postgres:
+        condition: service_healthy
+    environment:
+      # Core Airflow settings
+      AIRFLOW__CORE__EXECUTOR: LocalExecutor
+      AIRFLOW__CORE__SQL_ALCHEMY_CONN: postgresql+psycopg2://airflow:airflow@postgres:5432/airflow
+      AIRFLOW__CORE__LOAD_EXAMPLES: 'false'
+      AIRFLOW__CORE__DAGS_ARE_PAUSED_AT_CREATION: 'true'
+      AIRFLOW__CORE__MAX_ACTIVE_TASKS_PER_DAG: 2
+      AIRFLOW__CORE__MAX_ACTIVE_RUNS_PER_DAG: 1
+      
+      # Webserver settings
+      AIRFLOW__WEBSERVER__WORKERS: 1
+      AIRFLOW__WEBSERVER__WEB_SERVER_WORKER_TIMEOUT: 900
+      AIRFLOW__WEBSERVER__WORKER_REFRESH_BATCH_SIZE: 1
+      AIRFLOW__WEBSERVER__WORKER_REFRESH_INTERVAL: 30
+      
+      # Scheduler settings
+      AIRFLOW__SCHEDULER__DAG_DIR_LIST_INTERVAL: 300
+      AIRFLOW__SCHEDULER__CATCHUP_BY_DEFAULT: 'false'
+      AIRFLOW__SCHEDULER__MAX_THREADS: 2
+      
+      # Logging settings
+      AIRFLOW__LOGGING__LOGGING_LEVEL: INFO
+      
+      # Task settings
+      AIRFLOW__CELERY__TASK_SOFT_TIME_LIMIT: 600
+      AIRFLOW__CELERY__TASK_TIME_LIMIT: 1200
+      
+      # Memory optimization
+      AIRFLOW__CORE__PARALLELISM: 4
+    ports:
+      - "8081:8080"
+    user: "50000:0"  # Run as airflow user with UID 50000
+    volumes:
+      - ./airflow/dags:/opt/airflow/dags
+      - ./scripts:/scripts
+      - ./airflow/requirements.txt:/requirements.txt
+      - ./airflow/logs:/opt/airflow/logs:rw
+    entrypoint: /scripts/airflow-entrypoint.sh
+    # Add memory limit and resource constraints
+    mem_limit: 3g
+    mem_reservation: 1.5g
+    cpus: 1.5
+    # Add health check
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8080/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+    networks:
+      - backend
+    # Add restart policy
+    restart: unless-stopped
+
+volumes:
+  postgres_data:
+
+networks:
+  backend:
+    driver: bridge

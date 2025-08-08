@@ -1,0 +1,19 @@
+FROM apache/airflow:2.9.1
+
+# Optional: switch to root to install OS-level packages
+USER root
+
+# (Optional) Install system-level packages if needed
+# RUN apt-get update && apt-get install -y some-package
+# Create necessary directories and set proper ownership
+RUN mkdir -p /opt/airflow/logs /opt/airflow/dags /opt/airflow/plugins && \
+    chown -R airflow:root /opt/airflow && \
+    chmod -R 775 /opt/airflow
+
+USER airflow
+
+# Copy requirements file into the image
+COPY ./airflow/requirements.txt /requirements.txt
+
+# Install Python dependencies
+RUN pip install --no-cache-dir -r /requirements.txt

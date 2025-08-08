@@ -1,3 +1,5 @@
+<<<<<<< HEAD
+<<<<<<< HEAD
 # Byte-compiled / optimized / DLL files
 __pycache__/
 *.py[codz]
@@ -205,3 +207,45 @@ cython_debug/
 marimo/_static/
 marimo/_lsp/
 __marimo__/
+airflow/logs/
+=======
+=======
+>>>>>>> bf60425 (adding orchestration)
+# Python cache
+__pycache__/
+*.py[cod]
+
+# Virtual environments
+venv/
+.env
+*.env
+
+# Jupyter Notebook checkpoints
+.ipynb_checkpoints/
+
+# Large data files (only keep small samples)
+data/*.csv
+data/*.parquet
+data/*.zip
+data/*.gz
+
+# Postgres volume data (Docker)
+postgres_data/
+*.db.backup
+backups/
+
+
+# Logs
+*.log
+
+# System files
+.DS_Store
+Thumbs.db
+
+# VS Code settings
+<<<<<<< HEAD
+.vscode/
+>>>>>>> bf60425 (adding orchestration)
+=======
+.vscode/
+>>>>>>> bf60425 (adding orchestration)

@@ -1,0 +1,12 @@
+pandas
+pyarrow
+mlflow==2.17.2
+scikit-learn
+requests
+flask
+fastparquet
+xgboost
+numpy
+apache-airflow==2.9.1
+ipdb
+psycopg2-binary
